@@ -3,6 +3,10 @@ FROM php:8.2-apache
 
 USER root
 
+# 【关键配置】设置环境变量，告诉 Puppeteer 不要下载浏览器，并使用系统已安装的 Chromium
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 # 安装系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Puppeteer/Chromium 运行时依赖
@@ -35,7 +39,7 @@ RUN chromium --version
 # 安装 Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# 【新增修复】创建 npm 缓存目录并将其所有权设置为 www-data 用户，避免权限问题
+# 【新增修复】创建 npm 缓存目录并将其所有权设置为 www-data 用户
 RUN mkdir -p /var/www/.npm && chown -R www-data:www-data /var/www/.npm
 
 # 切换回 www-data 用户进行应用层操作
