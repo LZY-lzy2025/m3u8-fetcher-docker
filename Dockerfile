@@ -3,7 +3,7 @@ FROM php:8.2-apache
 
 USER root
 
-# 【关键优化】使用 --no-install-recommends 来避免安装非必要的软件包
+# 安装系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Puppeteer/Chromium 运行时依赖
     libnss3 \
@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # 系统工具
     wget \
     gnupg \
-    # 【新增】安装 Node.js 和 npm
+    # Node.js 和 npm
     nodejs \
     npm \
     # Chromium 浏览器
@@ -34,6 +34,9 @@ RUN chromium --version
 
 # 安装 Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# 【新增修复】创建 npm 缓存目录并将其所有权设置为 www-data 用户，避免权限问题
+RUN mkdir -p /var/www/.npm && chown -R www-data:www-data /var/www/.npm
 
 # 切换回 www-data 用户进行应用层操作
 USER www-data
