@@ -3,8 +3,7 @@ FROM php:8.2-apache
 
 USER root
 
-# 【关键优化】使用 --no-install-recommends 来避免安装非必要的软件包，以加快构建速度和减小镜像体积
-# 合并所有系统安装到一个 RUN 指令中，以减少 Docker 镜像层数
+# 【关键优化】使用 --no-install-recommends 来避免安装非必要的软件包
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Puppeteer/Chromium 运行时依赖
     libnss3 \
@@ -21,9 +20,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # 系统工具
     wget \
     gnupg \
+    # 【新增】安装 Node.js 和 npm
+    nodejs \
+    npm \
     # Chromium 浏览器
     chromium \
-    # 清理 apt 缓存以减小镜像大小
+    # 清理 apt 缓存
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
