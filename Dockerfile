@@ -39,7 +39,11 @@ RUN chromium --version
 # 安装 Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# 【新增修复】创建 npm 缓存目录并将其所有权设置为 www-data 用户
+# 【调整位置】在这里执行需要 root 权限的 Apache 配置
+RUN a2enmod rewrite
+RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
+
+# 【修复权限】创建 npm 缓存目录并将其所有权设置为 www-data 用户
 RUN mkdir -p /var/www/.npm && chown -R www-data:www-data /var/www/.npm
 
 # 切换回 www-data 用户进行应用层操作
@@ -51,7 +55,3 @@ RUN npm install
 
 # 复制项目代码
 COPY --chown=www-data:www-data . .
-
-# Apache 配置
-RUN a2enmod rewrite
-RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
