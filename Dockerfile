@@ -1,57 +1,42 @@
-# -----------------------------------------------------------------
-# 阶段一: "node-builder" - 安装 Node.js 和 Puppeteer
-# -----------------------------------------------------------------
-FROM node:20-slim AS node-builder
+# 使用官方的PHP镜像作为基础镜像，并包含Apache
+FROM php:8.2-apache
 
-WORKDIR /usr/src/app
+# 切换到root用户进行系统安装
+USER root
 
-# 复制 package.json 来安装依赖
-COPY package*.json ./
-
-# 安装 puppeteer。设置环境变量跳过内置的 Chromium 下载，
-# 因为我们将在最终镜像中使用系统安装的 chromium，更小更快。
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-RUN npm install puppeteer
-
-# -----------------------------------------------------------------
-# 阶段二: "final" - 创建最终的 PHP+Apache 镜像
-# -----------------------------------------------------------------
-FROM php:8.2-apache-bullseye
-
-# 安装系统依赖：Chromium浏览器和Node.js本身，以及一些必要的库
+# 1. 安装系统依赖和无头浏览器Chromium
+#    - git, curl 用于Composer
+#    - chromium 是我们需要的浏览器
+#    - 其他各种是Puppeteer在Linux下运行所需的依赖库
 RUN apt-get update && apt-get install -y \
-    # 安装 Node.js 的前置步骤
+    git \
     curl \
-    gnupg \
-    ca-certificates \
-    # Chromium 浏览器及其运行时依赖
-    chromium \
     libnss3 \
-    libatk1.0-0 \
     libatk-bridge2.0-0 \
-    libcups2 \
     libdrm2 \
-    libgtk-3-0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
     libgbm1 \
+    libxss1 \
     libasound2 \
-    # 安装 Node.js
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    # 清理 apt 缓存以减小镜像大小
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    chromium \
+    && rm -rf /var/lib/apt/lists/*
 
-# 启用 Apache 的 URL 重写模块
+# 2. 安装Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# 3. 切换回Apache默认用户，后续操作都在此用户下进行
+USER www-data
+
+# 4. 复制 package.json 并安装 Node.js 依赖
+COPY --chown=www-data:www-data package.json ./
+RUN npm install
+
+# 5. 复制项目代码
+#    --chown确保文件所有权正确
+COPY --chown=www-data:www-data . .
+
+# 6. Apache配置：启用.htaccess重写和设置正确的目录权限
 RUN a2enmod rewrite
-
-# 【关键改动1】复制 node_modules 从构建阶段到最终的网站根目录
-# 这样，当 node 在 /var/www/html 目录下运行时，就能找到它了
-COPY --from=node-builder /usr/src/app/node_modules /var/www/html/node_modules
-
-# 复制我们的 PHP 脚本到网站根目录
-COPY index.php /var/www/html/
-
-# 设置正确的文件权限
-RUN chown -R www-data:www-data /var/www/html
-
-# 暴露 80 端口
-EXPOSE 80
+RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
