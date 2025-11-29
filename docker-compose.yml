@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80" # 将容器的 80 端口映射到主机的 80 端口，Zeabur会自动处理
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
